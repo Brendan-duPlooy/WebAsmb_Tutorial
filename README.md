@@ -2,10 +2,6 @@
 
 An interactive implementation of Conway's Game of Life using Rust compiled to WebAssembly, demonstrating high-performance cellular automaton simulation in web browsers.
 
-## 🎮 Demo
-
-[Live Demo](https://Brendan-duPlooy.github.io/WebAsmb_Tutorial)
-
 ## ✨ Features
 
 - **High Performance**: Rust-based game logic compiled to WebAssembly for near-native speed
