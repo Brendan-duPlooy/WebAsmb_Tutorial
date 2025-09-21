@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Conway's Game of Life - WASM</title>
+    <style>
+        body {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            border: 2px solid #666;
+            cursor: crosshair;
+        }
+
+        .controls {
+            margin: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+
+        .info {
+            margin: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Conway's Game of Life - WebAssembly Edition</h1>
+    <div class="info">
+        <p>Click cells to toggle them, or use the controls below</p>
+        <p>Generation: <span id="generation">0</span> | FPS: <span id="fps">--</span></p>
+    </div>
+    
+    <canvas id="game-canvas"></canvas>
+    
+    <div class="controls">
+        <button id="play-pause">▶️ Play</button>
+        <button id="clear">🗑️ Clear</button>
+        <button id="random">🎲 Random</button>
+        <button id="glider">🚀 Add Glider</button>
+        <button id="speed-up">⚡ Speed Up</button>
+        <button id="speed-down">🐌 Speed Down</button>
+    </div>
+
+    <script type="module">
+        import init, { Universe, Cell } from './pkg/wasm_game_of_life.js';
+
+        async function run() {
+            await init();
+
+            const CELL_SIZE = 8;
+            const GRID_COLOR = "#333333";
+            const DEAD_COLOR = "#000000";
+            const ALIVE_COLOR = "#00FF00";
+
+            const universe = Universe.new();
+            const width = universe.width();
+            const height = universe.height();
+
+            const canvas = document.getElementById("game-canvas");
+            canvas.height = (CELL_SIZE + 1) * height + 1;
+            canvas.width = (CELL_SIZE + 1) * width + 1;
+
+            const ctx = canvas.getContext('2d');
+
+            let animationId = null;
+            let generation = 0;
+            let animationSpeed = 100; // milliseconds between frames
+            let lastFrameTime = 0;
+
+            const playPauseButton = document.getElementById("play-pause");
+            const clearButton = document.getElementById("clear");
+            const randomButton = document.getElementById("random");
+            const gliderButton = document.getElementById("glider");
+            const speedUpButton = document.getElementById("speed-up");
+            const speedDownButton = document.getElementById("speed-down");
+            const generationSpan = document.getElementById("generation");
+            const fpsSpan = document.getElementById("fps");
+
+            const drawGrid = () => {
+                ctx.beginPath();
+                ctx.strokeStyle = GRID_COLOR;
+                ctx.lineWidth = 1;
+
+                for (let i = 0; i <= width; i++) {
+                    ctx.moveTo(i * (CELL_SIZE + 1) + 1, 0);
+                    ctx.lineTo(i * (CELL_SIZE + 1) + 1, (CELL_SIZE + 1) * height + 1);
+                }
+
+                for (let j = 0; j <= height; j++) {
+                    ctx.moveTo(0, j * (CELL_SIZE + 1) + 1);
+                    ctx.lineTo((CELL_SIZE + 1) * width + 1, j * (CELL_SIZE + 1) + 1);
+                }
+
+                ctx.stroke();
+            };
+
+            const getIndex = (row, column) => {
+                return row * width + column;
+            };
+
+            const drawCells = () => {
+                const cellsPtr = universe.cells();
+                const cells = new Uint8Array(
+                    init.__wasm.memory.buffer,
+                    cellsPtr,
+                    width * height
+                );
+
+                ctx.beginPath();
+
+                for (let row = 0; row < height; row++) {
+                    for (let col = 0; col < width; col++) {
+                        const idx = getIndex(row, col);
+
+                        ctx.fillStyle = cells[idx] === Cell.Dead
+                            ? DEAD_COLOR
+                            : ALIVE_COLOR;
+
+                        ctx.fillRect(
+                            col * (CELL_SIZE + 1) + 1,
+                            row * (CELL_SIZE + 1) + 1,
+                            CELL_SIZE,
+                            CELL_SIZE
+                        );
+                    }
+                }
+
+                ctx.stroke();
+            };
+
+            const renderLoop = (timestamp) => {
+                if (timestamp - lastFrameTime >= animationSpeed) {
+                    universe.tick();
+                    generation++;
+                    generationSpan.textContent = generation;
+                    
+                    // Calculate FPS
+                    const fps = Math.round(1000 / (timestamp - lastFrameTime));
+                    fpsSpan.textContent = fps;
+                    
+                    lastFrameTime = timestamp;
+                }
+
+                drawGrid();
+                drawCells();
+
+                animationId = requestAnimationFrame(renderLoop);
+            };
+
+            const isPaused = () => {
+                return animationId === null;
+            };
+
+            const play = () => {
+                playPauseButton.textContent = "⏸️ Pause";
+                renderLoop();
+            };
+
+            const pause = () => {
+                playPauseButton.textContent = "▶️ Play";
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            };
+
+            playPauseButton.addEventListener("click", event => {
+                if (isPaused()) {
+                    play();
+                } else {
+                    pause();
+                }
+            });
+
+            clearButton.addEventListener("click", event => {
+                universe.clear();
+                generation = 0;
+                generationSpan.textContent = generation;
+                drawGrid();
+                drawCells();
+            });
+
+            randomButton.addEventListener("click", event => {
+                universe.randomize();
+                generation = 0;
+                generationSpan.textContent = generation;
+                drawGrid();
+                drawCells();
+            });
+
+            gliderButton.addEventListener("click", event => {
+                const row = Math.floor(Math.random() * height);
+                const col = Math.floor(Math.random() * width);
+                universe.set_pattern("glider", row, col);
+                drawGrid();
+                drawCells();
+            });
+
+            speedUpButton.addEventListener("click", event => {
+                animationSpeed = Math.max(10, animationSpeed - 20);
+            });
+
+            speedDownButton.addEventListener("click", event => {
+                animationSpeed = Math.min(500, animationSpeed + 20);
+            });
+
+            canvas.addEventListener("click", event => {
+                const boundingRect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / boundingRect.width;
+                const scaleY = canvas.height / boundingRect.height;
+
+                const canvasLeft = (event.clientX - boundingRect.left) * scaleX;
+                const canvasTop = (event.clientY - boundingRect.top) * scaleY;
+
+                const row = Math.min(Math.floor(canvasTop / (CELL_SIZE + 1)), height - 1);
+                const col = Math.min(Math.floor(canvasLeft / (CELL_SIZE + 1)), width - 1);
+
+                universe.toggle_cell(row, col);
+
+                drawGrid();
+                drawCells();
+            });
+
+            // Initial render
+            drawGrid();
+            drawCells();
+        }
+
+        run();
+    </script>
+</body>
+</html>

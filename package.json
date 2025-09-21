@@ -1,0 +1,39 @@
+{
+  "name": "wasm-game-of-life-web",
+  "version": "0.1.0",
+  "description": "Web frontend for Conway's Game of Life WebAssembly application",
+  "main": "index.js",
+  "bin": {
+    "create-wasm-app": ".bin/create-wasm-app.js"
+  },
+  "scripts": {
+    "build": "wasm-pack build --target web --out-dir pkg",
+    "serve": "python -m http.server 8000",
+    "serve-node": "npx serve .",
+    "dev": "npm run build && npm run serve",
+    "test": "wasm-pack test --headless --firefox",
+    "test-chrome": "wasm-pack test --headless --chrome"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/wasm-game-of-life.git"
+  },
+  "keywords": [
+    "webassembly",
+    "wasm",
+    "rust",
+    "javascript",
+    "conway",
+    "game-of-life",
+    "cellular-automaton"
+  ],
+  "author": "Student Name <student@example.com>",
+  "license": "(MIT OR Apache-2.0)",
+  "bugs": {
+    "url": "https://github.com/yourusername/wasm-game-of-life/issues"
+  },
+  "homepage": "https://github.com/yourusername/wasm-game-of-life#readme",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+}
