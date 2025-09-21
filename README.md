@@ -4,7 +4,7 @@ An interactive implementation of Conway's Game of Life using Rust compiled to We
 
 ## 🎮 Demo
 
-[Live Demo](https://yourusername.github.io/wasm-game-of-life) *(Replace with your GitHub Pages URL)*
+[Live Demo](https://Brendan-duPlooy.github.io/WebAsmb_Tutorial)
 
 ## ✨ Features
 
